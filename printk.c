@@ -2905,7 +2905,7 @@ asmlinkage long sys_get_sibling_process_structure(pid_t pid)
 {
     // 再帰的に発見したプロセス数
     long count = 0;
-	  struct task_struct *p, *me, *child, *cur;
+    struct task_struct *p, *me, *child, *cur;
     struct list_head children_list;
     struct queue *q;
     // TODO: 暗黙的な宣言ですと出る
@@ -2921,10 +2921,10 @@ asmlinkage long sys_get_sibling_process_structure(pid_t pid)
         if((cur = dequeue(q)) == (struct task_struct *)NULL){
             return (long)NULL;
         }
-    // childrenたどるコード
-    children_list = cur->children;
-    while(1){
-        if(list_empty(&children_list)) break;
+        // childrenたどるコード
+        children_list = cur->children;
+        while(1){
+            if(list_empty(&children_list)) break;
             child = list_entry(&children_list, struct task_struct, children);
             // TODO: 型が違う。次のlist_headへのアクセス
             children_list = chirdren_list->next;
