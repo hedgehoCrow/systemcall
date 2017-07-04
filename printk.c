@@ -2901,6 +2901,7 @@ int empty(struct queue *q)
 
 // SYSALL_DEFINED1(get_sibling_process_structure)
 // add #include <linux/sched.h>
+// add #define N 1000
 asmlinkage long sys_get_sibling_process_structure(pid_t pid)
 {
 	// 再帰的に発見したプロセス数
