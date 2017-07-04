@@ -2901,7 +2901,6 @@ int empty(struct queue *q)
 
 // SYSALL_DEFINED1(get_sibling_process_structure)
 // add #include <linux/sched.h>
-// add #define N 1000
 asmlinkage long sys_get_sibling_process_structure(pid_t pid)
 {
 	// 再帰的に発見したプロセス数
@@ -2925,14 +2924,16 @@ asmlinkage long sys_get_sibling_process_structure(pid_t pid)
 		// childrenたどるコード
 		children_list = cur->children;
 		while(1){
-			if(children_list == (struct list_head)NULL) break;
+			if(list_empty(&children_list)) break;
 			child = list_entry(&children_list, struct task_struct, children);
+			// TODO: 型が違う。次のlist_headへのアクセス
 			children_list = chirdren_list->next;
 			if(child == me) continue;
 			if(enqueue(q, child) == -ENOSR){
 				return (long)NULL;
 			}
 			count++;
+			// TODO: 型が違う。childrenの最後判定
 			if(children_list == cur->children->prev) break;
 		}	
 	}
