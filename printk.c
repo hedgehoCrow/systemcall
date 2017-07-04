@@ -2846,99 +2846,99 @@ EXPORT_SYMBOL_GPL(kmsg_dump_rewind);
 
 #define N 1000
 struct queue{
-	struct task_struct *processes[N];
-	int head;
-	int tail;
+    struct task_struct *processes[N];
+    int head;
+    int tail;
 };
 
 void initialize(struct queue *q)
 {
-	int i;
+    int i;
 
-	q->head = 0;
-	q->tail = 0;
-	for(i = 0; i < N; i++){
-		q->processes[i] = (struct task_struct *)NULL;
-	}
+    q->head = 0;
+    q->tail = 0;
+    for(i = 0; i < N; i++){
+        q->processes[i] = (struct task_struct *)NULL;
+    }
 }
 
 int enqueue(struct queue *q, struct task_struct *p)
 {
-	if(q->tail - q->head >= N) {
-		//printk("queue is full\n");
-		// 63 Out of streams resources
-		return -ENOSR;
-	} else {
-		q->processes[q->tail % N] = p;
-		q->tail++;
-	}
+    if(q->tail - q->head >= N) {
+        //printk("queue is full\n");
+        // 63 Out of streams resources
+        return -ENOSR;
+    } else {
+        q->processes[q->tail % N] = p;
+        q->tail++;
+    }
 
-	return 0;
+    return 0;
 }
 
 struct task_struct *dequeue(struct queue *q)
 {
-	struct task_struct *p;
-	
-	if(q->head == q->tail){
-		//printk("queue is empty\n");
-		return (struct task_struct *)NULL;
-	} else {
-		p = q->processes[q->head % N]; 
-		q->head++;
-		return p;
-	}
+    struct task_struct *p;
+
+    if(q->head == q->tail){
+        //printk("queue is empty\n");
+        return (struct task_struct *)NULL;
+    } else {
+        p = q->processes[q->head % N];
+        q->head++;
+        return p;
+    }
 }
 
 int empty(struct queue *q)
 {
-	if(q->head == q->tail){
-		return 0;
-	} else {
-		return -1;
-	}
+    if(q->head == q->tail){
+        return 0;
+    } else {
+        return -1;
+    }
 }
 
 // SYSALL_DEFINED1(get_sibling_process_structure)
 // add #include <linux/sched.h>
 asmlinkage long sys_get_sibling_process_structure(pid_t pid)
 {
-	// 再帰的に発見したプロセス数
-	long count = 0;
-	struct task_struct *p, *me, *child, *cur;
-	struct list_head children_list;
-	struct queue *q;
-	// TODO: 暗黙的な宣言ですと出る
-	// currentで代用
-	//p = me = find_task_by_pid(pid);
-	p = me = current;
+    // 再帰的に発見したプロセス数
+    long count = 0;
+	  struct task_struct *p, *me, *child, *cur;
+    struct list_head children_list;
+    struct queue *q;
+    // TODO: 暗黙的な宣言ですと出る
+    // currentで代用
+    //p = me = find_task_by_pid(pid);
+    p = me = current;
 
-	initialize(q);
-	if(enqueue(q, p->real_parent) == -ENOSR){
-		return (long)NULL;					
-	}
-	while(!empty(q)){
-		if((cur = dequeue(q)) == (struct task_struct *)NULL){
-			return (long)NULL;
-		}
-		// childrenたどるコード
-		children_list = cur->children;
-		while(1){
-			if(list_empty(&children_list)) break;
-			child = list_entry(&children_list, struct task_struct, children);
-			// TODO: 型が違う。次のlist_headへのアクセス
-			children_list = chirdren_list->next;
-			if(child == me) continue;
-			if(enqueue(q, child) == -ENOSR){
-				return (long)NULL;
-			}
-			count++;
-			// TODO: 型が違う。childrenの最後判定
-			if(children_list == cur->children->prev) break;
-		}	
-	}
-	
-	// とりあえずたどったプロセス数を返す
-	return count;
-	
+    initialize(q);
+    if(enqueue(q, p->real_parent) == -ENOSR){
+        return (long)NULL;
+    }
+    while(!empty(q)){
+        if((cur = dequeue(q)) == (struct task_struct *)NULL){
+            return (long)NULL;
+        }
+    // childrenたどるコード
+    children_list = cur->children;
+    while(1){
+        if(list_empty(&children_list)) break;
+            child = list_entry(&children_list, struct task_struct, children);
+            // TODO: 型が違う。次のlist_headへのアクセス
+            children_list = chirdren_list->next;
+            if(child == me) continue;
+            if(enqueue(q, child) == -ENOSR){
+                return (long)NULL;
+            }
+            count++;
+            // TODO: 型が違う。childrenの最後判定
+            if(children_list == cur->children->prev) break;
+        }
+    }
+
+    // とりあえずたどったプロセス数を返す
+    return count;
+
 }
