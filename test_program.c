@@ -11,11 +11,16 @@ int main()
     for(i = 0; i < 5; i++) {
       // get overhead
       __asm__ volatile("rdtsc" : "=A" (from)); __asm__ volatile("rdtsc" : "=A" (to)); diff = to - from;
+      
       // get counter
       __asm__ volatile("rdtsc" : "=A" (from));
+      
+      
       // ret = get_sibling_process_structure(pid); 
       // ”351" is the systemcall number of get_sibling_process_structure
       __asm__ volatile("int $0x80" : "=a" (ret) : "0" (351), "b" (pid));
+      
+
       // get counter
       __asm__ volatile("rdtsc" : "=A" (to));
       printf("Retval: %d, Clock: %u¥n", ret, (to - from - diff));
