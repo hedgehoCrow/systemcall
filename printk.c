@@ -2903,13 +2903,15 @@ int empty(struct queue *q)
 // add #include <linux/sched.h>
 asmlinkage long sys_get_sibling_process_structure(pid_t pid)
 {
-	struct task_struct *p, *cur;
+	// 再帰的に発見したプロセス数
+	long count = 0;
+	struct task_struct *p, *me, *cur;
 	struct list_head children;
 	struct queue *q;
 	// TODO: 暗黙的な宣言ですと出る
 	// currentで代用
-	//p = find_task_by_pid(pid);
-	p = current;
+	//p = me = find_task_by_pid(pid);
+	p = me = current;
 
 	initialize(q);
 	if(enqueue(q, p->real_parent) == -ENOSR){
@@ -2922,13 +2924,8 @@ asmlinkage long sys_get_sibling_process_structure(pid_t pid)
 		// childrenたどるコード
 //		cur->children	
 	}
-	if(p != (struct task_struct *)NULL){
-		printk("success\n");
-	} else {
-		printk("failure\n");
-	}
 	
-	//printk("%d\n", p);
-	return pid;
+	// とりあえずたどったプロセス数を返す
+	return count;
 	
 }
