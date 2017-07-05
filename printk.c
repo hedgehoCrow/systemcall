@@ -50,6 +50,8 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/printk.h>
 
+
+
 /*
  * Architectures can override it:
  */
@@ -2851,13 +2853,15 @@ typedef struct queue{
 	int tail;
 } Queue;
 
+Queue *initialize(void);
+
 Queue *initialize()
 {
 	int i;
         Queue *q = (Queue *)kmalloc(sizeof(Queue), GFP_ATOMIC);
 
         if(!q){
-            return -ENOMEM;
+            return (Queue *)-ENOMEM;
         }
 
 	q->head = 0;
@@ -2918,7 +2922,7 @@ asmlinkage long sys_get_sibling_process_structure(pid_t pid)
 	// currentで代用
 	//p = me = find_task_by_pid(pid);
 	p = me = current;
-        if((q = initialize()) == -ENOMEM){
+        if((q = initialize()) == (Queue *)-ENOMEM){
             return -ENOMEM;
         }
 	if(enqueue(q, p->real_parent) == -ENOSR){
@@ -2940,13 +2944,14 @@ asmlinkage long sys_get_sibling_process_structure(pid_t pid)
 			if(list_empty(children_list)) break;
 			child = list_entry(children_list, struct task_struct, children);
                         printk("%d\n", child->pid);
-			children_list = children_list->next;
 			if(child == me) continue;
 			if(enqueue(q, child) == -ENOSR){
                             return -3;
 			//	return (long)NULL;
 			}
 			count++;
+                        if(children_list == children_list->next) break;
+			children_list = children_list->next;
 			if(children_list == cur->children.prev) break;
 		}	
 	}
