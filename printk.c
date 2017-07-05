@@ -2853,6 +2853,7 @@ typedef struct queue{
 	int tail;
 } Queue;
 
+// プロトタイプ宣言
 Queue *initialize(void);
 
 Queue *initialize()
@@ -2944,11 +2945,12 @@ asmlinkage long sys_get_sibling_process_structure(pid_t pid)
 			if(list_empty(children_list)) break;
 			child = list_entry(children_list, struct task_struct, children);
                         printk("%d\n", child->pid);
-			if(child == me) continue;
-			if(enqueue(q, child) == -ENOSR){
-                            return -3;
-			//	return (long)NULL;
-			}
+			if(child != me){
+			    if(enqueue(q, child) == -ENOSR){
+                                return -3;
+			//	    return (long)NULL;
+			    }
+                        }
 			count++;
                         if(children_list == children_list->next) break;
 			children_list = children_list->next;
