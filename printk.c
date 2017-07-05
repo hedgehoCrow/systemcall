@@ -2845,99 +2845,115 @@ EXPORT_SYMBOL_GPL(kmsg_dump_rewind);
 #endif
 
 #define N 1000
-struct queue{
-    struct task_struct *processes[N];
-    int head;
-    int tail;
-};
+typedef struct queue{
+	struct task_struct *processes[N];
+	int head;
+	int tail;
+} Queue;
 
-void initialize(struct queue *q)
+Queue *initialize()
 {
-    int i;
+	int i;
+        Queue *q = (Queue *)kmalloc(sizeof(Queue), GFP_ATOMIC);
 
-    q->head = 0;
-    q->tail = 0;
-    for(i = 0; i < N; i++){
-        q->processes[i] = (struct task_struct *)NULL;
-    }
+        if(!q){
+            return -ENOMEM;
+        }
+
+	q->head = 0;
+	q->tail = 0;
+	for(i = 0; i < N; i++){
+		q->processes[i] = (struct task_struct *)NULL;
+	}
+        return q;
 }
 
-int enqueue(struct queue *q, struct task_struct *p)
+int enqueue(Queue *q, struct task_struct *p)
 {
-    if(q->tail - q->head >= N) {
-        //printk("queue is full\n");
-        // 63 Out of streams resources
-        return -ENOSR;
-    } else {
-        q->processes[q->tail % N] = p;
-        q->tail++;
-    }
+	if(q->tail - q->head >= N) {
+		//printk("queue is full\n");
+		// 63 Out of streams resources
+		return -ENOSR;
+	} else {
+		q->processes[q->tail % N] = p;
+		q->tail++;
+	}
 
-    return 0;
+	return 0;
 }
 
-struct task_struct *dequeue(struct queue *q)
+struct task_struct *dequeue(Queue *q)
 {
-    struct task_struct *p;
-
-    if(q->head == q->tail){
-        //printk("queue is empty\n");
-        return (struct task_struct *)NULL;
-    } else {
-        p = q->processes[q->head % N];
-        q->head++;
-        return p;
-    }
+	struct task_struct *p;
+	
+	if(q->head == q->tail){
+		//printk("queue is empty\n");
+		return (struct task_struct *)NULL;
+	} else {
+		p = q->processes[q->head % N]; 
+		q->head++;
+		return p;
+	}
 }
 
-int empty(struct queue *q)
+int empty(Queue *q)
 {
-    if(q->head == q->tail){
-        return 0;
-    } else {
-        return -1;
-    }
+	if(q->head == q->tail){
+		return 1;
+	} else {
+		return 0;
+	}
 }
 
 // SYSALL_DEFINED1(get_sibling_process_structure)
 // add #include <linux/sched.h>
 asmlinkage long sys_get_sibling_process_structure(pid_t pid)
 {
-<<<<<<< HEAD
 	// 再帰的に発見したプロセス数
 	long count = 0;
 	struct task_struct *p, *me, *child, *cur;
 	struct list_head *children_list;
-	struct queue *q;
+	Queue *q;
 	// TODO: 暗黙的な宣言ですと出る
 	// currentで代用
 	//p = me = find_task_by_pid(pid);
 	p = me = current;
-
-	initialize(q);
-	if(enqueue(q, p->real_parent) == -ENOSR){
-		return (long)NULL;					
-	}
-	while(!empty(q)){
-		if((cur = dequeue(q)) == (struct task_struct *)NULL){
-			return (long)NULL;
-		}
+        q = initialize();
+        printk("%d\n", q->head);
+        printk("%d\n", q->tail);
+        enqueue(q, p->real_parent);
+//        printk("%d\n", q->processes[0]->pid);
+//	if(enqueue(q, p->real_parent) == -ENOSR){
+//		return -1;
+//                //return (long)NULL;					
+//	}
+//        printk("%d\n", empty(q));
+//        printk("%d\n", q->processes[0]->pid);
+//	while(!empty(q)){
+  //          cur = dequeue(q);
+//		if(cur == (struct task_struct *)NULL){
+//                    return -2;
+//			// return (long)NULL;
+//		}
+//            printk("%d\n", cur->pid);
 		// childrenたどるコード
-		children_list = cur->children.next;
-		while(1){
-			if(list_empty(children_list)) break;
-			child = list_entry(children_list, struct task_struct, children);
-			children_list = children_list->next;
-			if(child == me) continue;
-			if(enqueue(q, child) == -ENOSR){
-				return (long)NULL;
-			}
-			count++;
-			// TODO: 型が違う。childrenの最後判定
-			if(children_list == cur->children.prev) break;
-		}	
-	}
+//		children_list = cur->children.next;
+		//while(1){
+		//	if(list_empty(children_list)) break;
+		//	child = list_entry(children_list, struct task_struct, children);
+		//	children_list = children_list->next;
+		//	if(child == me) continue;
+		//	if(enqueue(q, child) == -ENOSR){
+                //            return -3;
+		//	//	return (long)NULL;
+		//	}
+		//	count++;
+		//	if(children_list == cur->children.prev) break;
+		//}	
+	//}
 	
+        kfree(q);
 	// とりあえずたどったプロセス数を返す
-	return count;	
+	return count;
+	
 }
