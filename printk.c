@@ -2918,39 +2918,38 @@ asmlinkage long sys_get_sibling_process_structure(pid_t pid)
 	// currentで代用
 	//p = me = find_task_by_pid(pid);
 	p = me = current;
-        q = initialize();
-        printk("%d\n", q->head);
-        printk("%d\n", q->tail);
-        enqueue(q, p->real_parent);
-//        printk("%d\n", q->processes[0]->pid);
-//	if(enqueue(q, p->real_parent) == -ENOSR){
-//		return -1;
-//                //return (long)NULL;					
-//	}
-//        printk("%d\n", empty(q));
-//        printk("%d\n", q->processes[0]->pid);
-//	while(!empty(q)){
-  //          cur = dequeue(q);
-//		if(cur == (struct task_struct *)NULL){
-//                    return -2;
-//			// return (long)NULL;
-//		}
-//            printk("%d\n", cur->pid);
+        if((q = initialize()) == -ENOMEM){
+            return -ENOMEM;
+        }
+	if(enqueue(q, p->real_parent) == -ENOSR){
+		return -1;
+                //return (long)NULL;					
+	}
+
+	while(!empty(q)){
+		if((cur = dequeue(q))== (struct task_struct *)NULL){
+                    return -2;
+			// return (long)NULL;
+		}
+            printk("%d\n", cur->pid);
+
 		// childrenたどるコード
-//		children_list = cur->children.next;
-		//while(1){
-		//	if(list_empty(children_list)) break;
-		//	child = list_entry(children_list, struct task_struct, children);
-		//	children_list = children_list->next;
-		//	if(child == me) continue;
-		//	if(enqueue(q, child) == -ENOSR){
-                //            return -3;
-		//	//	return (long)NULL;
-		//	}
-		//	count++;
-		//	if(children_list == cur->children.prev) break;
-		//}	
-	//}
+		children_list = cur->children.next;
+		while(1){
+                    // TODO:終了条件がおかしい無限ループになる
+			if(list_empty(children_list)) break;
+			child = list_entry(children_list, struct task_struct, children);
+                        printk("%d\n", child->pid);
+			children_list = children_list->next;
+			if(child == me) continue;
+			if(enqueue(q, child) == -ENOSR){
+                            return -3;
+			//	return (long)NULL;
+			}
+			count++;
+			if(children_list == cur->children.prev) break;
+		}	
+	}
 	
         kfree(q);
 	// とりあえずたどったプロセス数を返す
