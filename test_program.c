@@ -23,7 +23,7 @@ int main()
 
       // get counter
       __asm__ volatile("rdtsc" : "=A" (to));
-      printf("Found process: %ld, Clock: %u¥n", ret, (to - from - diff));
+      printf("Retval: %d, Clock: %u\n", ret, (to - from - diff));
     }
 
     return(0);
