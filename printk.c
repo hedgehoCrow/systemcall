@@ -2912,27 +2912,31 @@ int empty(Queue *q)
     }
 }
 
-
-char *search_process(struct task_struct *cur)
+void search_process(struct task_struct *cur, char *str)
 {
     struct task_struct *child;
     struct list_head *children_list;
-    char str[512], str_pid[16];
+    char str_pid[16];
     char str_open[] = "->[", str_close[] = "],";
-    
+
+    // 初期化
+    str_pid[0] = '\0';
+    //memset(str_pid, "\0", sizeof(str_pid));
+
     list_for_each(children_list, &cur->children){
 	child = list_entry(children_list, struct task_struct, sibling);
 	printk("child's pid is %d\n", child->pid);
 	snprintf(str_pid, sizeof(str_pid), "%d", child->pid);
 	
 	strcat(str, str_pid);
-	strcat(str, str_open); 
-	strcat(str, search_process(child));
+	strcat(str, str_open);
+	printk("Before call search: %s\n", str);
+	search_process(child, str);
 	strcat(str, str_close);
 	printk("struct: %s\n", str);
     }
 
-    return str;
+    printk("End of search: %s\n", str);
 }
 
 // SYSALL_DEFINED1(get_sibling_process_structure)
@@ -2954,6 +2958,12 @@ asmlinkage long sys_get_sibling_process_structure(pid_t pid, char *user)
     //    //return (long)NULL;	
     //}
 
+    // 初期化
+    str[0] = '\0';
+    str_pid[0] = '\0';
+    //memset(str, "\0", sizeof(str));
+    //memset(str_pid, "\0", sizeof(str_pid));
+
     snprintf(str_pid, sizeof(str_pid), "%d", pid);
     strcat(str, str_pid);
     strcat(str, str_open); 
@@ -2961,7 +2971,8 @@ asmlinkage long sys_get_sibling_process_structure(pid_t pid, char *user)
     list_for_each(children_list, &p->children){
 	child = list_entry(children_list, struct task_struct, sibling);
 	if(child->pid != me->pid){
-	    strcat(str, search_process(child));
+	    printk("Before call search: %s\n", str);
+	    search_process(child, str);
 	}
     }
     strcat(str, str_close);
@@ -2993,6 +3004,6 @@ asmlinkage long sys_get_sibling_process_structure(pid_t pid, char *user)
     //    
     //kfree(q);
     // とりあえずたどったプロセス数を返す
-    printk("%s\n", str);
+    printk("Finish syscall: %s\n", str);
     return count;	
 }
