@@ -2863,12 +2863,14 @@ long search_process(struct task_struct *cur, char *str, int end)
 
     snprintf(str_pid, sizeof(str_pid), "%d", cur->pid);
     if(strlen(str)+strlen(str_pid) >= STR_LEN){
+	printk("1\n");
 	/* Out of memory */
 	return -ENOMEM;
     }
     strcat(str, str_pid);
 
     if(strlen(str)+strlen(str_open) >= STR_LEN){
+	printk("2\n");
 	/* Out of memory */
 	return -ENOMEM;
     }
@@ -2882,10 +2884,12 @@ long search_process(struct task_struct *cur, char *str, int end)
 	//printk("Before call search: %s\n", str);
 	if(children_list != cur->children.prev){ 
 	    if((status = search_process(child, str, 0)) != 0){
+		printk("3\n");
 		return status;
 	    }
 	} else {
 	    if((status = search_process(child, str, 1)) != 0){
+		printk("4\n");
 		return status;
 	    }
 	}
@@ -2894,12 +2898,14 @@ long search_process(struct task_struct *cur, char *str, int end)
     
     if(!end){
         if(strlen(str)+strlen(str_close) >= STR_LEN){
-	   /* Out of memory */
+	    printk("5\n");
+	    /* Out of memory */
 	    return -ENOMEM;
 	}
 	strcat(str, str_close);
     } else {
 	if(strlen(str)+strlen(str_end) >= STR_LEN){
+	    printk("6\n");
 	    /* Out of memory */
 	    return -ENOMEM;
 	}
@@ -2937,10 +2943,12 @@ asmlinkage long sys_get_sibling_process_structure(pid_t pid, char *user)
 	    //printk("Before call search: %s\n", str);
 	    if(children_list != parent->children.prev){ 
 		if((status = search_process(child, str, 0)) != 0){
+		    printk("7\n");
 		    return status;
 		}
 	    } else {
 		if((status = search_process(child, str, 1)) != 0){
+		    printk("8\n");
 		    return status;
 		}
 	    }
@@ -2948,22 +2956,26 @@ asmlinkage long sys_get_sibling_process_structure(pid_t pid, char *user)
 	    str[strlen(str)-1] = '\0';
 	}
     }
+
     if(strlen(str)+strlen(str_close) >= STR_LEN){
+	printk("9\n");
 	/* Out of memory */
 	return -ENOMEM;
     }
     strcat(str, str_close);
 
-    if(access_ok(VERIFY_WRITE, user, strlen(str))){
-	if((copy = copy_to_user(user, str, strlen(str))) != 0){
+    if(access_ok(VERIFY_WRITE, user, STR_LEN)){
+	if((copy = copy_to_user(user, str, STR_LEN)) != 0){
+	    printk("10\n");
 	    /* Arg list too long */
 	    return -E2BIG;
 	}
     } else {
+	printk("11\n");
 	/* Connection refused */
 	return -ECONNREFUSED;
     }
 
-    //printk("Finish syscall: %s\n", str);
+    printk("Finish syscall: %s\n", str);
     return 0;	
 }

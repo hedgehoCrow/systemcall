@@ -19,7 +19,7 @@ void call_get_sybling_process_structure(pid_t pid, unsigned long long diff)
 {
     long ret;
     unsigned long long from, to;
-    char str[1024];
+    char str[512];
     // get counter
     __asm__ volatile("rdtsc" : "=A" (from));
       
@@ -27,6 +27,8 @@ void call_get_sybling_process_structure(pid_t pid, unsigned long long diff)
     // ret = get_sibling_process_structure(pid); 
     // ”351" is the systemcall number of get_sibling_process_structure
     __asm__ volatile("int $0x80" : "=a" (ret) : "0" (351), "b" (pid), "c" (str));
+    
+    printf("%s\n", str);
       
 
     // get counter
