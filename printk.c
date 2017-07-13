@@ -2912,31 +2912,42 @@ int empty(Queue *q)
     }
 }
 
-void search_process(struct task_struct *cur, char *str)
+void search_process(struct task_struct *cur, char *str, int end)
 {
     struct task_struct *child;
     struct list_head *children_list;
     char str_pid[16];
-    char str_open[] = "->[", str_close[] = "],";
+    char str_open[] = "->[", str_close[] = "],", str_end[] = "]";
 
     // 初期化
     str_pid[0] = '\0';
     //memset(str_pid, "\0", sizeof(str_pid));
 
+    snprintf(str_pid, sizeof(str_pid), "%d", cur->pid);
+    strcat(str, str_pid);
+    strcat(str, str_open);
+
+    //printk("parent's pid is %d\n", cur->pid);
     list_for_each(children_list, &cur->children){
 	child = list_entry(children_list, struct task_struct, sibling);
-	printk("child's pid is %d\n", child->pid);
-	snprintf(str_pid, sizeof(str_pid), "%d", child->pid);
+	//printk("child's pid is %d\n", child->pid);
 	
-	strcat(str, str_pid);
-	strcat(str, str_open);
-	printk("Before call search: %s\n", str);
-	search_process(child, str);
+	//printk("Before call search: %s\n", str);
+	if(children_list != cur->children.prev){ 
+	    search_process(child, str, 0);
+	} else {
+	    search_process(child, str, 1);
+	}
+	//printk("struct: %s\n", str);
+    }
+    
+    if(!end){
 	strcat(str, str_close);
-	printk("struct: %s\n", str);
+    } else {
+	strcat(str, str_end);
     }
 
-    printk("End of search: %s\n", str);
+    //printk("End of search: %s\n", str);
 }
 
 // SYSALL_DEFINED1(get_sibling_process_structure)
@@ -2944,12 +2955,13 @@ asmlinkage long sys_get_sibling_process_structure(pid_t pid, char *user)
 {
     // 再帰的に発見したプロセス数
     long count = 0;
-    char str[1024], str_pid[16];
-    char str_open[] = "->[", str_close[] = "],";
-    struct task_struct *p, *me, *child;//, *cur;
+    char str[512], str_pid[16];
+    char str_open[] = "->[", str_close[] = "]";
+    struct task_struct *me, *parent, *child;//, *cur;
     struct list_head *children_list;
     //Queue *q;
-    p = me = find_task_by_vpid(pid);
+    me = find_task_by_vpid(pid);
+    parent = me->real_parent;
     //if((q = initialize()) == (Queue *)-ENOMEM){
     //    return -ENOMEM;
     //}
@@ -2964,15 +2976,23 @@ asmlinkage long sys_get_sibling_process_structure(pid_t pid, char *user)
     //memset(str, "\0", sizeof(str));
     //memset(str_pid, "\0", sizeof(str_pid));
 
-    snprintf(str_pid, sizeof(str_pid), "%d", pid);
+    snprintf(str_pid, sizeof(str_pid), "%d", parent->pid);
     strcat(str, str_pid);
     strcat(str, str_open); 
     
-    list_for_each(children_list, &p->children){
+    //printk("parent's pid is %d\n", parent->pid);
+    list_for_each(children_list, &parent->children){
 	child = list_entry(children_list, struct task_struct, sibling);
+	//printk("child's pid is %d\n", child->pid);
 	if(child->pid != me->pid){
-	    printk("Before call search: %s\n", str);
-	    search_process(child, str);
+	    //printk("Before call search: %s\n", str);
+	    if(children_list != parent->children.prev){ 
+		search_process(child, str, 0);
+	    } else {
+		search_process(child, str, 1);
+	    }
+	} else if(children_list == parent->children.prev && str[strlen(str)-1] == ','){
+	    str[strlen(str)-1] = '\0';
 	}
     }
     strcat(str, str_close);
