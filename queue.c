@@ -2848,11 +2848,72 @@ EXPORT_SYMBOL_GPL(kmsg_dump_rewind);
 #include <linux/sched.h>
 #include <linux/string.h>
 
-#define STR_LEN 512
+#define N 100
+typedef struct queue{
+    struct task_struct *processes[N];
+    int head;
+    int tail;
+} Queue;
 
-long search_process(struct task_struct *cur, char *str, int end)
+// プロトタイプ宣言
+Queue *initialize(void);
+char *search(struct task_struct *);
+
+Queue *initialize()
 {
-    long status;
+    int i;
+    Queue *q = (Queue *)kmalloc(sizeof(Queue), GFP_ATOMIC);
+
+    if(!q){
+	return (Queue *)-ENOMEM;
+    }
+
+    q->head = 0;
+    q->tail = 0;
+    for(i = 0; i < N; i++){
+	q->processes[i] = (struct task_struct *)NULL;
+    }
+    return q;
+}
+
+int enqueue(Queue *q, struct task_struct *p)
+{
+    if(q->tail - q->head >= N) {
+	//printk("queue is full\n");
+	// 63 Out of streams resources
+	return -ENOSR;
+    } else {
+	q->processes[q->tail % N] = p;
+	q->tail++;
+    }
+
+    return 0;
+}
+
+struct task_struct *dequeue(Queue *q)
+{
+    struct task_struct *p;
+	
+    if(q->head == q->tail){
+	return (struct task_struct *)NULL;
+    } else {
+	p = q->processes[q->head % N]; 
+	q->head++;
+	return p;
+    }
+}
+
+int empty(Queue *q)
+{
+    if(q->head == q->tail){
+	return 1;
+    } else {
+	return 0;
+    }
+}
+
+void search_process(struct task_struct *cur, char *str, int end)
+{
     struct task_struct *child;
     struct list_head *children_list;
     char str_pid[16];
@@ -2860,18 +2921,10 @@ long search_process(struct task_struct *cur, char *str, int end)
 
     // 初期化
     str_pid[0] = '\0';
+    //memset(str_pid, "\0", sizeof(str_pid));
 
     snprintf(str_pid, sizeof(str_pid), "%d", cur->pid);
-    if(strlen(str)+strlen(str_pid) >= STR_LEN){
-	/* Out of memory */
-	return -ENOMEM;
-    }
     strcat(str, str_pid);
-
-    if(strlen(str)+strlen(str_open) >= STR_LEN){
-	/* Out of memory */
-	return -ENOMEM;
-    }
     strcat(str, str_open);
 
     //printk("parent's pid is %d\n", cur->pid);
@@ -2881,49 +2934,47 @@ long search_process(struct task_struct *cur, char *str, int end)
 	
 	//printk("Before call search: %s\n", str);
 	if(children_list != cur->children.prev){ 
-	    if((status = search_process(child, str, 0)) != 0){
-		return status;
-	    }
+	    search_process(child, str, 0);
 	} else {
-	    if((status = search_process(child, str, 1)) != 0){
-		return status;
-	    }
+	    search_process(child, str, 1);
 	}
 	//printk("struct: %s\n", str);
     }
     
     if(!end){
-        if(strlen(str)+strlen(str_close) >= STR_LEN){
-	   /* Out of memory */
-	    return -ENOMEM;
-	}
 	strcat(str, str_close);
     } else {
-	if(strlen(str)+strlen(str_end) >= STR_LEN){
-	    /* Out of memory */
-	    return -ENOMEM;
-	}
 	strcat(str, str_end);
     }
 
     //printk("End of search: %s\n", str);
-    return 0;
 }
 
 // SYSALL_DEFINED1(get_sibling_process_structure)
 asmlinkage long sys_get_sibling_process_structure(pid_t pid, char *user)
 {
-    long status = 0, copy;
-    char str[STR_LEN], str_pid[16];
+    // 再帰的に発見したプロセス数
+    long count = 0;
+    char str[512], str_pid[16];
     char str_open[] = "->[", str_close[] = "]";
     struct task_struct *me, *parent, *child;//, *cur;
     struct list_head *children_list;
+    //Queue *q;
     me = find_task_by_vpid(pid);
     parent = me->real_parent;
+    //if((q = initialize()) == (Queue *)-ENOMEM){
+    //    return -ENOMEM;
+    //}
+    //if(enqueue(q, p->real_parent) == -ENOSR){
+    //    return -1;
+    //    //return (long)NULL;	
+    //}
 
     // 初期化
     str[0] = '\0';
     str_pid[0] = '\0';
+    //memset(str, "\0", sizeof(str));
+    //memset(str_pid, "\0", sizeof(str_pid));
 
     snprintf(str_pid, sizeof(str_pid), "%d", parent->pid);
     strcat(str, str_pid);
@@ -2936,34 +2987,43 @@ asmlinkage long sys_get_sibling_process_structure(pid_t pid, char *user)
 	if(child->pid != me->pid){
 	    //printk("Before call search: %s\n", str);
 	    if(children_list != parent->children.prev){ 
-		if((status = search_process(child, str, 0)) != 0){
-		    return status;
-		}
+		search_process(child, str, 0);
 	    } else {
-		if((status = search_process(child, str, 1)) != 0){
-		    return status;
-		}
+		search_process(child, str, 1);
 	    }
 	} else if(children_list == parent->children.prev && str[strlen(str)-1] == ','){
 	    str[strlen(str)-1] = '\0';
 	}
     }
-    if(strlen(str)+strlen(str_close) >= STR_LEN){
-	/* Out of memory */
-	return -ENOMEM;
-    }
     strcat(str, str_close);
 
-    if(access_ok(VERIFY_WRITE, user, strlen(str))){
-	if((copy = copy_to_user(user, str, strlen(str))) != 0){
-	    /* Arg list too long */
-	    return -E2BIG;
-	}
-    } else {
-	/* Connection refused */
-	return -ECONNREFUSED;
-    }
 
-    //printk("Finish syscall: %s\n", str);
-    return 0;	
+    //while(!empty(q)){
+    //    if((cur = dequeue(q)) == (struct task_struct *)NULL){
+    //        return -2;
+    //        // return (long)NULL;
+    //    }
+    //    printk("parent's pid is %d\n", cur->pid);
+    //    printk("head:%d\n", q->head);
+    //    printk("tail:%d\n", q->tail);
+
+    //    // childrenたどるコード
+    //    list_for_each(children_list, &cur->children){
+    //        child = list_entry(children_list, struct task_struct, sibling);
+    //        printk("child's pid is %d\n", child->pid);
+
+    //        if(child->pid != me->pid){
+    //    	if(enqueue(q, child) == -ENOSR){
+    //    	    return -3;
+    //    	    //return -ENOSR;
+    //    	}
+    //        }
+    //        count++;
+    //    }
+    //}
+    //    
+    //kfree(q);
+    // とりあえずたどったプロセス数を返す
+    printk("Finish syscall: %s\n", str);
+    return count;	
 }
