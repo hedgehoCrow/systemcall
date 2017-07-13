@@ -43,6 +43,8 @@
 #include <linux/rculist.h>
 #include <linux/poll.h>
 #include <linux/irq_work.h>
+
+// 追加分
 #include <linux/sched.h>
 
 #include <asm/uaccess.h>
@@ -2846,7 +2848,7 @@ void kmsg_dump_rewind(struct kmsg_dumper *dumper)
 EXPORT_SYMBOL_GPL(kmsg_dump_rewind);
 #endif
 
-#define N 1000
+#define N 100
 typedef struct queue{
 	struct task_struct *processes[N];
 	int head;
@@ -2910,19 +2912,18 @@ int empty(Queue *q)
 	}
 }
 
-// SYSALL_DEFINED1(get_sibling_process_structure)
 // add #include <linux/sched.h>
+// SYSALL_DEFINED1(get_sibling_process_structure)
 asmlinkage long sys_get_sibling_process_structure(pid_t pid)
 {
 	// 再帰的に発見したプロセス数
 	long count = 0;
 	struct task_struct *p, *me, *child, *cur;
 	struct list_head *children_list;
+	//struct list_head children_list;
 	Queue *q;
-	// TODO: 暗黙的な宣言ですと出る
-	// currentで代用
-	//p = me = find_task_by_pid(pid);
-	p = me = current;
+	p = me = find_task_by_vpid(pid);
+	//p = me = current;
         if((q = initialize()) == (Queue *)-ENOMEM){
             return -ENOMEM;
         }
@@ -2932,30 +2933,27 @@ asmlinkage long sys_get_sibling_process_structure(pid_t pid)
 	}
 
 	while(!empty(q)){
-		if((cur = dequeue(q))== (struct task_struct *)NULL){
+		if((cur = dequeue(q)) == (struct task_struct *)NULL){
                     return -2;
 			// return (long)NULL;
 		}
-            printk("%d\n", cur->pid);
+            printk("parent's pid is %d\n", cur->pid);
+            printk("head:%d\n", q->head);
+            printk("tail:%d\n", q->tail);
 
 		// childrenたどるコード
-		children_list = cur->children.next;
-		while(1){
-                    // TODO:終了条件がおかしい無限ループになる
-			if(list_empty(children_list)) break;
-			child = list_entry(children_list, struct task_struct, children);
-                        printk("%d\n", child->pid);
-			if(child != me){
-			    if(enqueue(q, child) == -ENOSR){
-                                return -3;
-			//	    return (long)NULL;
-			    }
-                        }
-			count++;
-                        if(children_list == children_list->next) break;
-			children_list = children_list->next;
-			if(children_list == cur->children.prev) break;
-		}	
+		list_for_each(children_list, &cur->children){
+		    child = list_entry(children_list, struct task_struct, sibling);
+		    printk("child's pid is %d\n", child->pid);
+
+		    if(child->pid != me->pid){
+			if(enqueue(q, child) == -ENOSR){
+			    return -3;
+			    //return -ENOSR;
+			}
+		    }
+		    count++;
+		}
 	}
 	
         kfree(q);
