@@ -5,13 +5,45 @@
 
 #define P_MAX 5 // 子プロセス数
 
+unsigned long long get_overhead()
+{
+    unsigned long long from, to, diff;
+    __asm__ volatile("rdtsc" : "=A" (from));
+    __asm__ volatile("rdtsc" : "=A" (to));
+    diff = to - from;
+    
+    return diff;
+}
+
+void call_get_sybling_process_structure(pid_t pid, unsigned long long diff)
+{
+    long ret;
+    unsigned long long from, to;
+    // get counter
+    __asm__ volatile("rdtsc" : "=A" (from));
+      
+      
+    // ret = get_sibling_process_structure(pid); 
+    // ”351" is the systemcall number of get_sibling_process_structure
+    __asm__ volatile("int $0x80" : "=a" (ret) : "0" (351), "b" (pid));
+      
+
+    // get counter
+    __asm__ volatile("rdtsc" : "=A" (to));
+    
+    
+    printf("Retval: %d, Clock: %u\n", ret, (to - from - diff));
+}
+
 int main()
 {
     pid_t my_pid, pid[P_MAX];
-    int status;
-    long i, ret;
+    long i;
     unsigned long long from, to, diff;
 
+    // get overhead
+    diff = get_overhead();
+    
     /* 子プロセスの生成 */
     for(i = 0; i < P_MAX && (pid[i] = fork()) > 0; i++);
 
@@ -22,24 +54,20 @@ int main()
 	sleep(600);
     } else if(i == P_MAX){
 	/* 親プロセス */    
-	sleep(5);
+	// 子プロセスの生成待つ
+	sleep(1);
 	my_pid = getpid();
 	
-	// get overhead
-	__asm__ volatile("rdtsc" : "=A" (from)); __asm__ volatile("rdtsc" : "=A" (to)); diff = to - from;
-      
-	// get counter
-	__asm__ volatile("rdtsc" : "=A" (from));
-      
-      
-	// ret = get_sibling_process_structure(pid); 
-	// ”351" is the systemcall number of get_sibling_process_structure
-	__asm__ volatile("int $0x80" : "=a" (ret) : "0" (351), "b" (my_pid));
-      
+	/* システムコール実行 */
+	// 自分
+	call_get_sybling_process_structure(my_pid, diff);
+    
+	// forkで生成したプロセス
+	for(i = 0; i < P_MAX; i++){
+	    call_get_sybling_process_structure(pid[i], diff);
+	}
+	
 
-	// get counter
-	__asm__ volatile("rdtsc" : "=A" (to));
-	printf("Retval: %d, Clock: %u\n", ret, (to - from - diff));
     } else {
 	perror("child fork error");
 	return -ECHILD;
