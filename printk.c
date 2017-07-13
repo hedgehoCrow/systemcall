@@ -44,9 +44,6 @@
 #include <linux/poll.h>
 #include <linux/irq_work.h>
 
-// 追加分
-#include <linux/sched.h>
-
 #include <asm/uaccess.h>
 
 #define CREATE_TRACE_POINTS
@@ -2848,116 +2845,154 @@ void kmsg_dump_rewind(struct kmsg_dumper *dumper)
 EXPORT_SYMBOL_GPL(kmsg_dump_rewind);
 #endif
 
+#include <linux/sched.h>
+#include <linux/string.h>
+
 #define N 100
 typedef struct queue{
-	struct task_struct *processes[N];
-	int head;
-	int tail;
+    struct task_struct *processes[N];
+    int head;
+    int tail;
 } Queue;
 
 // プロトタイプ宣言
 Queue *initialize(void);
+char *search(struct task_struct *);
 
 Queue *initialize()
 {
-	int i;
-        Queue *q = (Queue *)kmalloc(sizeof(Queue), GFP_ATOMIC);
+    int i;
+    Queue *q = (Queue *)kmalloc(sizeof(Queue), GFP_ATOMIC);
 
-        if(!q){
-            return (Queue *)-ENOMEM;
-        }
+    if(!q){
+	return (Queue *)-ENOMEM;
+    }
 
-	q->head = 0;
-	q->tail = 0;
-	for(i = 0; i < N; i++){
-		q->processes[i] = (struct task_struct *)NULL;
-	}
-        return q;
+    q->head = 0;
+    q->tail = 0;
+    for(i = 0; i < N; i++){
+	q->processes[i] = (struct task_struct *)NULL;
+    }
+    return q;
 }
 
 int enqueue(Queue *q, struct task_struct *p)
 {
-	if(q->tail - q->head >= N) {
-		//printk("queue is full\n");
-		// 63 Out of streams resources
-		return -ENOSR;
-	} else {
-		q->processes[q->tail % N] = p;
-		q->tail++;
-	}
+    if(q->tail - q->head >= N) {
+	//printk("queue is full\n");
+	// 63 Out of streams resources
+	return -ENOSR;
+    } else {
+	q->processes[q->tail % N] = p;
+	q->tail++;
+    }
 
-	return 0;
+    return 0;
 }
 
 struct task_struct *dequeue(Queue *q)
 {
-	struct task_struct *p;
+    struct task_struct *p;
 	
-	if(q->head == q->tail){
-		//printk("queue is empty\n");
-		return (struct task_struct *)NULL;
-	} else {
-		p = q->processes[q->head % N]; 
-		q->head++;
-		return p;
-	}
+    if(q->head == q->tail){
+	return (struct task_struct *)NULL;
+    } else {
+	p = q->processes[q->head % N]; 
+	q->head++;
+	return p;
+    }
 }
 
 int empty(Queue *q)
 {
-	if(q->head == q->tail){
-		return 1;
-	} else {
-		return 0;
-	}
+    if(q->head == q->tail){
+	return 1;
+    } else {
+	return 0;
+    }
 }
 
-// add #include <linux/sched.h>
-// SYSALL_DEFINED1(get_sibling_process_structure)
-asmlinkage long sys_get_sibling_process_structure(pid_t pid)
+
+char *search_process(struct task_struct *cur)
 {
-	// 再帰的に発見したプロセス数
-	long count = 0;
-	struct task_struct *p, *me, *child, *cur;
-	struct list_head *children_list;
-	//struct list_head children_list;
-	Queue *q;
-	p = me = find_task_by_vpid(pid);
-	//p = me = current;
-        if((q = initialize()) == (Queue *)-ENOMEM){
-            return -ENOMEM;
-        }
-	if(enqueue(q, p->real_parent) == -ENOSR){
-		return -1;
-                //return (long)NULL;					
-	}
-
-	while(!empty(q)){
-		if((cur = dequeue(q)) == (struct task_struct *)NULL){
-                    return -2;
-			// return (long)NULL;
-		}
-            printk("parent's pid is %d\n", cur->pid);
-            printk("head:%d\n", q->head);
-            printk("tail:%d\n", q->tail);
-
-		// childrenたどるコード
-		list_for_each(children_list, &cur->children){
-		    child = list_entry(children_list, struct task_struct, sibling);
-		    printk("child's pid is %d\n", child->pid);
-
-		    if(child->pid != me->pid){
-			if(enqueue(q, child) == -ENOSR){
-			    return -3;
-			    //return -ENOSR;
-			}
-		    }
-		    count++;
-		}
-	}
+    struct task_struct *child;
+    struct list_head *children_list;
+    char str[512], str_pid[16];
+    char str_open[] = "->[", str_close[] = "],";
+    
+    list_for_each(children_list, &cur->children){
+	child = list_entry(children_list, struct task_struct, sibling);
+	printk("child's pid is %d\n", child->pid);
+	snprintf(str_pid, sizeof(str_pid), "%d", child->pid);
 	
-        kfree(q);
-	// とりあえずたどったプロセス数を返す
-	return count;
-	
+	strcat(str, str_pid);
+	strcat(str, str_open); 
+	strcat(str, search_process(child));
+	strcat(str, str_close);
+	printk("struct: %s\n", str);
+    }
+
+    return str;
+}
+
+// SYSALL_DEFINED1(get_sibling_process_structure)
+asmlinkage long sys_get_sibling_process_structure(pid_t pid, char *user)
+{
+    // 再帰的に発見したプロセス数
+    long count = 0;
+    char str[1024], str_pid[16];
+    char str_open[] = "->[", str_close[] = "],";
+    struct task_struct *p, *me, *child;//, *cur;
+    struct list_head *children_list;
+    //Queue *q;
+    p = me = find_task_by_vpid(pid);
+    //if((q = initialize()) == (Queue *)-ENOMEM){
+    //    return -ENOMEM;
+    //}
+    //if(enqueue(q, p->real_parent) == -ENOSR){
+    //    return -1;
+    //    //return (long)NULL;	
+    //}
+
+    snprintf(str_pid, sizeof(str_pid), "%d", pid);
+    strcat(str, str_pid);
+    strcat(str, str_open); 
+    
+    list_for_each(children_list, &p->children){
+	child = list_entry(children_list, struct task_struct, sibling);
+	if(child->pid != me->pid){
+	    strcat(str, search_process(child));
+	}
+    }
+    strcat(str, str_close);
+
+
+    //while(!empty(q)){
+    //    if((cur = dequeue(q)) == (struct task_struct *)NULL){
+    //        return -2;
+    //        // return (long)NULL;
+    //    }
+    //    printk("parent's pid is %d\n", cur->pid);
+    //    printk("head:%d\n", q->head);
+    //    printk("tail:%d\n", q->tail);
+
+    //    // childrenたどるコード
+    //    list_for_each(children_list, &cur->children){
+    //        child = list_entry(children_list, struct task_struct, sibling);
+    //        printk("child's pid is %d\n", child->pid);
+
+    //        if(child->pid != me->pid){
+    //    	if(enqueue(q, child) == -ENOSR){
+    //    	    return -3;
+    //    	    //return -ENOSR;
+    //    	}
+    //        }
+    //        count++;
+    //    }
+    //}
+    //    
+    //kfree(q);
+    // とりあえずたどったプロセス数を返す
+    printk("%s\n", str);
+    return count;	
 }
