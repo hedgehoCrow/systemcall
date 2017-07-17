@@ -1,0 +1,104 @@
+1
+child process id is 242
+1
+child process id is 238
+1
+tree struct:  204->[]
+204
+Retval: 0, Clock: 164633
+
+2
+child process id is 248
+1
+tree struct:  204->[]
+204
+Retval: 0, Clock: 164633
+
+2
+child process id is 244
+1
+tree struct:  204->[]
+204
+Retval: 0, Clock: 164633
+
+2
+tree struct:  237->[244->[],245->[],247->[],248->[]]
+237
+ +244
+ +245
+ +247
+ +248
+Retval: 0, Clock: 84376
+
+3
+child process id is 254
+1
+tree struct:  204->[]
+204
+Retval: 0, Clock: 164633
+
+2
+tree struct:  237->[244->[],245->[],247->[],248->[]]
+237
+ +244
+ +245
+ +247
+ +248
+Retval: 0, Clock: 84376
+
+3
+child process id is 250
+1
+tree struct:  204->[]
+204
+Retval: 0, Clock: 164633
+
+2
+tree struct:  237->[244->[],245->[],247->[],248->[]]
+237
+ +244
+ +245
+ +247
+ +248
+Retval: 0, Clock: 84376
+
+3
+tree struct:  237->[244->[],245->[],247->[],248->[]]
+237
+ +244
+ +245
+ +247
+ +248
+Retval: -3, Clock: 103810
+
+
+4
+
+child process id is 259
+1
+tree struct:  204->[]
+204
+Retval: 0, Clock: 164633
+
+2
+tree struct:  237->[244->[],245->[],247->[],248->[]]
+237
+ +244
+ +245
+ +247
+ +248
+Retval: 0, Clock: 84376
+
+3
+tree struct:  237->[244->[],245->[],247->[],248->[]]
+237
+ +244
+ +245
+ +247
+ +248
+Retval: -3, Clock: 103810
+
+
+4
+
+child process id is 255

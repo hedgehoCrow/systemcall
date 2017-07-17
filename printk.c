@@ -2901,7 +2901,8 @@ long search_process(struct task_struct *cur, char *str, int end)
 	}
 	strcat(str, str_end);
     }
-return 0;
+
+    return 0;
 }
 
 // SYSALL_DEFINED1(get_sibling_process_structure)
@@ -2912,6 +2913,12 @@ asmlinkage long sys_get_sibling_process_structure(pid_t pid, char *user)
     char str_open[] = "->[", str_close[] = "]";
     struct task_struct *me, *parent, *child;//, *cur;
     struct list_head *children_list;
+
+    if(pid < 0 || 100000 <= pid){
+	/* No such process */
+	return -ESRCH;
+    }
+
     me = find_task_by_vpid(pid);
     parent = me->real_parent;
 
@@ -2925,6 +2932,10 @@ asmlinkage long sys_get_sibling_process_structure(pid_t pid, char *user)
     
     list_for_each(children_list, &parent->children){
 	child = list_entry(children_list, struct task_struct, sibling);
+	if(child == (task_struct *)NULL){
+	    /* No such process */
+	    return -ESRCH;
+	}
 	if(child->pid != me->pid){
 	    if(children_list != parent->children.prev){ 
 		if((status = search_process(child, str, 0)) != 0){

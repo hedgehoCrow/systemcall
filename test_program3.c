@@ -125,10 +125,10 @@ int main()
 	/* 親プロセス */
 	// 子プロセスの生成待つ
 	sleep(1);
-	my_pid = getpid();
+	my_pid = -512;
 
 	/* システムコール実行 */
-	// 自分
+	// 異常値, return -3
 	call_get_sybling_process_structure(my_pid, diff);
 
     } else {
@@ -138,7 +138,7 @@ int main()
 
     /* wait children process */
     for(i = 0; i <P_MAX; i++){
-	     wait_pid = wait(&status);
+	wait_pid = wait(&status);
 	if(wait_pid == -1){
 	    if(ECHILD == errno){
 		/* No child processes */

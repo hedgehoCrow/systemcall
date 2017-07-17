@@ -112,6 +112,7 @@ int main()
     // get overhead
     diff = get_overhead();
 
+
     /* 子プロセスの生成 */
     for(i = 0; i < P_MAX && (pid[i] = fork()) > 0; i++);
 
@@ -125,12 +126,16 @@ int main()
 	/* 親プロセス */
 	// 子プロセスの生成待つ
 	sleep(1);
-	my_pid = getpid();
+	my_pid = pid[2];
 
 	/* システムコール実行 */
 	// 自分
 	call_get_sybling_process_structure(my_pid, diff);
 
+	// forkで生成したプロセス
+	//for(i = 0; i < P_MAX; i++){
+	//    call_get_sybling_process_structure(pid[i], diff);
+	//}
     } else {
 	perror("child fork error");
 	return -ECHILD;
@@ -138,7 +143,7 @@ int main()
 
     /* wait children process */
     for(i = 0; i <P_MAX; i++){
-	     wait_pid = wait(&status);
+	wait_pid = wait(&status);
 	if(wait_pid == -1){
 	    if(ECHILD == errno){
 		/* No child processes */
