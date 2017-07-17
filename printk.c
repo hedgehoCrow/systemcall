@@ -2863,43 +2863,43 @@ long search_process(struct task_struct *cur, char *str, int end)
 
     snprintf(str_pid, sizeof(str_pid), "%d", cur->pid);
     if(strlen(str)+strlen(str_pid) >= STR_LEN){
-	/* Out of memory */
-	return -ENOMEM;
+        /* Out of memory */
+	      return -ENOMEM;
     }
     strcat(str, str_pid);
 
     if(strlen(str)+strlen(str_open) >= STR_LEN){
-	/* Out of memory */
-	return -ENOMEM;
+	      /* Out of memory */
+	      return -ENOMEM;
     }
     strcat(str, str_open);
 
     list_for_each(children_list, &cur->children){
-	child = list_entry(children_list, struct task_struct, sibling);
-	
-	if(children_list != cur->children.prev){ 
-	    if((status = search_process(child, str, 0)) != 0){
-		return status;
-	    }
-	} else {
-	    if((status = search_process(child, str, 1)) != 0){
-		return status;
-	    }
-	}
+	      child = list_entry(children_list, struct task_struct, sibling);
+
+	      if(children_list != cur->children.prev){
+	          if((status = search_process(child, str, 0)) != 0){
+		            return status;
+	          }
+	      } else {
+	         if((status = search_process(child, str, 1)) != 0){
+		            return status;
+	          }
+	      }
     }
-    
+
     if(!end){
         if(strlen(str)+strlen(str_close) >= STR_LEN){
-	    /* Out of memory */
-	    return -ENOMEM;
-	}
-	strcat(str, str_close);
+	          /* Out of memory */
+	          return -ENOMEM;
+	      }
+	      strcat(str, str_close);
     } else {
-	if(strlen(str)+strlen(str_end) >= STR_LEN){
-	    /* Out of memory */
-	    return -ENOMEM;
-	}
-	strcat(str, str_end);
+	      if(strlen(str)+strlen(str_end) >= STR_LEN){
+	          /* Out of memory */
+	          return -ENOMEM;
+	      }
+	      strcat(str, str_end);
     }
 
     return 0;
@@ -2915,12 +2915,21 @@ asmlinkage long sys_get_sibling_process_structure(pid_t pid, char *user)
     struct list_head *children_list;
 
     if(pid < 0 || 100000 <= pid){
-	/* No such process */
-	return -ESRCH;
+        /* No such process */
+        return -ESRCH;
     }
 
     me = find_task_by_vpid(pid);
+    if(me == (struct task_struct *)NULL){
+        /* No such process */
+        return -ESRCH;
+    }
+    
     parent = me->real_parent;
+    if(parent == (struct task_struct *)NULL){
+        /* No such process */
+        return -ESRCH;
+    }
 
     // 初期化
     str[0] = '\0';
@@ -2928,51 +2937,51 @@ asmlinkage long sys_get_sibling_process_structure(pid_t pid, char *user)
 
     snprintf(str_pid, sizeof(str_pid), "%d", parent->pid);
     strcat(str, str_pid);
-    strcat(str, str_open); 
-    
+    strcat(str, str_open);
+
     list_for_each(children_list, &parent->children){
-	child = list_entry(children_list, struct task_struct, sibling);
-	if(child == (task_struct *)NULL){
-	    /* No such process */
-	    return -ESRCH;
-	}
-	if(child->pid != me->pid){
-	    if(children_list != parent->children.prev){ 
-		if((status = search_process(child, str, 0)) != 0){
-		    return status;
-		}
-	    } else {
-		if((status = search_process(child, str, 1)) != 0){
-		    return status;
-		}
-	    }
-	} else if(children_list == parent->children.prev && str[strlen(str)-1] == ','){
-	    str[strlen(str)-1] = '\0';
-	}
+        child = list_entry(children_list, struct task_struct, sibling);
+        if(child == (task_struct *)NULL){
+	          /* No such process */
+	          return -ESRCH;
+	      }
+	      if(child->pid != me->pid){
+	          if(children_list != parent->children.prev){
+                if((status = search_process(child, str, 0)) != 0){
+		                return status;
+		            }
+	          } else {
+		            if((status = search_process(child, str, 1)) != 0){
+		                return status;
+		            }
+	          }
+	      } else if(children_list == parent->children.prev && str[strlen(str)-1] == ','){
+	          str[strlen(str)-1] = '\0';
+	      }
     }
 
     if(strlen(str)+strlen(str_close) >= STR_LEN){
-	/* Out of memory */
-	return -ENOMEM;
+	      /* Out of memory */
+	      return -ENOMEM;
     }
     strcat(str, str_close);
 
     /* コピーの長さ設定 */
     if(strlen(str)+1 <= STR_LEN){
-	copy_len = strlen(str)+1;
+	      copy_len = strlen(str)+1;
     } else {
-	copy_len = STR_LEN;
+	      copy_len = STR_LEN;
     }
 
     if(access_ok(VERIFY_WRITE, user, copy_len)){
-	if((copy = copy_to_user(user, str, copy_len)) != 0){
-	    /* Arg list too long */
-	    return -E2BIG;
-	}
+	      if((copy = copy_to_user(user, str, copy_len)) != 0){
+	          /* Arg list too long */
+	          return -E2BIG;
+	      }
     } else {
-	/* Connection refused */
-	return -ECONNREFUSED;
+	      /* Connection refused */
+	      return -ECONNREFUSED;
     }
 
-    return 0;	
+    return 0;
 }

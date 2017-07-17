@@ -71,7 +71,7 @@ void print_tree(char *str, int *index, int depth)
     (*index)++;
 }
 
-long call_get_sybling_process_structure(pid_t pid, unsigned long long diff)
+void call_get_sybling_process_structure(pid_t pid, unsigned long long diff)
 {
     int *index;
     long ret;

@@ -18,11 +18,11 @@ unsigned long long get_overhead(void)
 
 int is_num(char c)
 {
-  if('0' <= c && c <= '9'){
-      return 1;
-  } else {
-      return 0;
-  }
+    if('0' <= c && c <= '9'){
+	      return 1;
+    } else {
+	      return 0;
+    }
 }
 
 void print_tree(char *str, int *index, int depth)
@@ -58,8 +58,8 @@ void print_tree(char *str, int *index, int depth)
         strcat(leaf, str_pid);
         printf("%s\n", leaf);
 
-	/* pid reset */
-	leaf[strlen(leaf)-strlen(str_pid)] = '\0';
+	      /* pid reset */
+	      leaf[strlen(leaf)-strlen(str_pid)] = '\0';
 
         /* 子供要素まで移動 */
         for(; *index < strlen(str) && str[*index] != '['; (*index)++);
@@ -71,7 +71,7 @@ void print_tree(char *str, int *index, int depth)
     (*index)++;
 }
 
-void call_get_sybling_process_structure(pid_t pid, unsigned long long diff)
+long call_get_sybling_process_structure(pid_t pid, unsigned long long diff)
 {
     int *index;
     long ret;
@@ -88,7 +88,7 @@ void call_get_sybling_process_structure(pid_t pid, unsigned long long diff)
     __asm__ volatile("int $0x80" : "=a" (ret) : "0" (351), "b" (pid), "c" (str));
 
     if(ret != 0){
-	errno = ret;
+	      errno = ret;
     }
 
     printf("tree struct:  %s\n", str);
@@ -104,6 +104,7 @@ void call_get_sybling_process_structure(pid_t pid, unsigned long long diff)
 
 int main()
 {
+    int status = 0;
     pid_t my_pid, wait_pid, pid[P_MAX], grandson_pid;
     long i;
     unsigned long long from, to, diff;
@@ -111,11 +112,42 @@ int main()
     // get overhead
     diff = get_overhead();
 
-    my_pid = 1024;
+    /* 子プロセスの生成 */
+    for(i = 0; i < P_MAX && (pid[i] = fork()) > 0; i++);
 
-    /* システムコール実行 */
-    // Linuxカーネル
-    call_get_sybling_process_structure(my_pid, diff);
+    if(i != P_MAX && pid[i] == 0){
+        /* 子プロセス */
+        printf("child process id is %d\n", getpid());
+        sleep(5);
+        return 0;
+    } else if(i == P_MAX){
+        /* 親プロセス */
+        // 子プロセスの生成待つ
+        sleep(1);
+	      my_pid = getpid();
 
-    return(0);
+        /* システムコール実行 */
+        // 自分
+        call_get_sybling_process_structure(my_pid, diff);
+
+    } else {
+        perror("child fork error");
+        return -ECHILD;
+    }
+
+    /* wait children process */
+    for(i = 0; i <P_MAX; i++){
+        wait_pid = wait(&status);
+        if(wait_pid == -1){
+	          if(ECHILD == errno){
+		            /* No child processes */
+		            break;
+	          } else if(EINTR == errno){
+		            /* Interrupted system call */
+		            continue;
+	          }
+	      }
+    }
+
+    return (0);
 }
