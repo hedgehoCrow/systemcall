@@ -18,11 +18,11 @@ unsigned long long get_overhead(void)
 
 int is_num(char c)
 {
-    if('0' <= c && c <= '9'){
-	return 1;
-    } else {
-	return 0;
-    }
+  if('0' <= c && c <= '9'){
+      return 1;
+  } else {
+      return 0;
+  }
 }
 
 void print_tree(char *str, int *index, int depth)
