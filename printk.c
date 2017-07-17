@@ -2863,63 +2863,51 @@ long search_process(struct task_struct *cur, char *str, int end)
 
     snprintf(str_pid, sizeof(str_pid), "%d", cur->pid);
     if(strlen(str)+strlen(str_pid) >= STR_LEN){
-	printk("1\n");
 	/* Out of memory */
 	return -ENOMEM;
     }
     strcat(str, str_pid);
 
     if(strlen(str)+strlen(str_open) >= STR_LEN){
-	printk("2\n");
 	/* Out of memory */
 	return -ENOMEM;
     }
     strcat(str, str_open);
 
-    //printk("parent's pid is %d\n", cur->pid);
     list_for_each(children_list, &cur->children){
 	child = list_entry(children_list, struct task_struct, sibling);
-	//printk("child's pid is %d\n", child->pid);
 	
-	//printk("Before call search: %s\n", str);
 	if(children_list != cur->children.prev){ 
 	    if((status = search_process(child, str, 0)) != 0){
-		printk("3\n");
 		return status;
 	    }
 	} else {
 	    if((status = search_process(child, str, 1)) != 0){
-		printk("4\n");
 		return status;
 	    }
 	}
-	//printk("struct: %s\n", str);
     }
     
     if(!end){
         if(strlen(str)+strlen(str_close) >= STR_LEN){
-	    printk("5\n");
 	    /* Out of memory */
 	    return -ENOMEM;
 	}
 	strcat(str, str_close);
     } else {
 	if(strlen(str)+strlen(str_end) >= STR_LEN){
-	    printk("6\n");
 	    /* Out of memory */
 	    return -ENOMEM;
 	}
 	strcat(str, str_end);
     }
-
-    //printk("End of search: %s\n", str);
-    return 0;
+return 0;
 }
 
 // SYSALL_DEFINED1(get_sibling_process_structure)
 asmlinkage long sys_get_sibling_process_structure(pid_t pid, char *user)
 {
-    long status = 0, copy;
+    long status = 0, copy, copy_len;
     char str[STR_LEN], str_pid[16];
     char str_open[] = "->[", str_close[] = "]";
     struct task_struct *me, *parent, *child;//, *cur;
@@ -2935,20 +2923,15 @@ asmlinkage long sys_get_sibling_process_structure(pid_t pid, char *user)
     strcat(str, str_pid);
     strcat(str, str_open); 
     
-    //printk("parent's pid is %d\n", parent->pid);
     list_for_each(children_list, &parent->children){
 	child = list_entry(children_list, struct task_struct, sibling);
-	//printk("child's pid is %d\n", child->pid);
 	if(child->pid != me->pid){
-	    //printk("Before call search: %s\n", str);
 	    if(children_list != parent->children.prev){ 
 		if((status = search_process(child, str, 0)) != 0){
-		    printk("7\n");
 		    return status;
 		}
 	    } else {
 		if((status = search_process(child, str, 1)) != 0){
-		    printk("8\n");
 		    return status;
 		}
 	    }
@@ -2958,24 +2941,27 @@ asmlinkage long sys_get_sibling_process_structure(pid_t pid, char *user)
     }
 
     if(strlen(str)+strlen(str_close) >= STR_LEN){
-	printk("9\n");
 	/* Out of memory */
 	return -ENOMEM;
     }
     strcat(str, str_close);
 
-    if(access_ok(VERIFY_WRITE, user, STR_LEN)){
-	if((copy = copy_to_user(user, str, STR_LEN)) != 0){
-	    printk("10\n");
+    /* コピーの長さ設定 */
+    if(strlen(str)+1 <= STR_LEN){
+	copy_len = strlen(str)+1;
+    } else {
+	copy_len = STR_LEN;
+    }
+
+    if(access_ok(VERIFY_WRITE, user, copy_len)){
+	if((copy = copy_to_user(user, str, copy_len)) != 0){
 	    /* Arg list too long */
 	    return -E2BIG;
 	}
     } else {
-	printk("11\n");
 	/* Connection refused */
 	return -ECONNREFUSED;
     }
 
-    printk("Finish syscall: %s\n", str);
     return 0;	
 }
